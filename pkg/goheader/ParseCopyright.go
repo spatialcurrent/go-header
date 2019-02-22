@@ -19,6 +19,6 @@ func ParseCopyright(str string) (*Copyright, error) {
 	}
 	return &Copyright{
 		Owner: owner,
-		Year: year,
+		Year:  year,
 	}, nil
 }

@@ -12,10 +12,10 @@ import (
 
 func RemoveEmptyLines(str string) string {
 	output := make([]string, 0)
-  for _, line := range strings.Split(str, "\n") {
+	for _, line := range strings.Split(str, "\n") {
 		if len(line) > 0 {
 			output = append(output, line)
 		}
 	}
-  return strings.Join(output, "\n")
+	return strings.Join(output, "\n")
 }

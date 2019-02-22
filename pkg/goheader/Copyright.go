@@ -8,7 +8,7 @@ package goheader
 
 type Copyright struct {
 	Owner *Owner
-	Year int
+	Year  int
 }
 
 func (c Copyright) Map() map[string]interface{} {

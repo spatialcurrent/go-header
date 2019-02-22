@@ -18,8 +18,8 @@ func ParseHeader(str string) (*Header, error) {
 	}
 	license := ParseLicense(text)
 	return &Header{
-		Text: text,
+		Text:      text,
 		Copyright: copyright,
-		License: license,
+		License:   license,
 	}, nil
 }

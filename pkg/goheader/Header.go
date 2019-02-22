@@ -7,9 +7,9 @@
 package goheader
 
 type Header struct {
-	Text string
+	Text      string
 	Copyright *Copyright
-	License string
+	License   string
 }
 
 func (h Header) Map() map[string]interface{} {

@@ -7,8 +7,8 @@
 package goheader
 
 type Owner struct {
-	Name string
-  Email string
+	Name  string
+	Email string
 }
 
 func (o Owner) Map() map[string]interface{} {

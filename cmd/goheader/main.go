@@ -63,7 +63,7 @@ func main() {
 		Long:  "print version information to stdout",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(gitTag) > 0 {
-				fmt.Println("Tag: "+gitTag)
+				fmt.Println("Tag: " + gitTag)
 			}
 			if len(gitBranch) > 0 {
 				fmt.Println("Branch: " + gitBranch)

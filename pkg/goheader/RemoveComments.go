@@ -11,11 +11,11 @@ import (
 )
 
 func RemoveLinePrefix(str string, prefix string) string {
-  lines := strings.Split(str, "\n")
-  for i, line := range lines {
-    if strings.HasPrefix(line, prefix) {
-      lines[i] = strings.TrimSpace(line[len(prefix):])
-    }
-  }
-  return strings.Join(lines, "\n")
+	lines := strings.Split(str, "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, prefix) {
+			lines[i] = strings.TrimSpace(line[len(prefix):])
+		}
+	}
+	return strings.Join(lines, "\n")
 }
