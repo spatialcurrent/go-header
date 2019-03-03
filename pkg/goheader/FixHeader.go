@@ -10,13 +10,11 @@ import (
 	"strconv"
 )
 
-func ParseYear(str string) (int, error) {
-	if yearMatches := YearPattern.FindStringSubmatch(str); len(yearMatches) > 0 {
-		y, err := strconv.Atoi(yearMatches[2])
-		if err != nil {
-			return -1, err
+func FixHeader(str string, year int) string {
+	if year > 0 {
+		if yearMatches := YearPattern.FindStringSubmatch(str); len(yearMatches) > 0 {
+			str = yearMatches[1] + strconv.Itoa(year) + yearMatches[3]
 		}
-		return y, nil
 	}
-	return -1, nil
+	return str
 }

@@ -44,11 +44,11 @@ func mustCompilePatterns(expressions map[string]string) map[string]*regexp.Regex
 }
 
 var patterns = mustCompilePatterns(map[string]string{
-	"go": "(?s)^(.*?)package",
+	"go": "(?s)^(.*?)(package (?:\\w+)(?:.*))$",
 })
 
-func main() {
-	rootCommand := &cobra.Command{
+func createRootCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "goheader",
 		Short: "goheader",
 		Long:  `goheader is a simple program for inspecting and updating the headers in files`,
@@ -56,8 +56,13 @@ func main() {
 			return cmd.Usage()
 		},
 	}
+	flags := cmd.PersistentFlags()
+	flags.BoolP("verbose", "v", false, "Verbose output")
+	return cmd
+}
 
-	versionCommand := &cobra.Command{
+func createVersionCommand() *cobra.Command {
+	return &cobra.Command{
 		Use:   "version",
 		Short: "print version information to stdout",
 		Long:  "print version information to stdout",
@@ -74,8 +79,10 @@ func main() {
 			return nil
 		},
 	}
+}
 
-	dumpCommand := &cobra.Command{
+func createDumpCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "dump",
 		Short: "dump headers",
 		Long:  "dump headers",
@@ -84,7 +91,7 @@ func main() {
 			v := viper.New()
 			err := v.BindPFlags(cmd.Flags())
 			if err != nil {
-				panic(err)
+				return err
 			}
 			v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 			v.AutomaticEnv()
@@ -125,19 +132,19 @@ func main() {
 								if err != nil {
 									return err
 								}
-								outputMap := map[string]interface{}{
-									"path": p,
+								outputFile := goheader.File{
+									Path:      p,
+									Name:      filepath.Base(p),
+									Extension: ext,
 								}
-								if headerMatches := pattern.FindStringSubmatch(string(b)); len(headerMatches) > 0 {
-									h, err := goheader.ParseHeader(goheader.RemoveEmptyLines(goheader.RemoveLinePrefix(headerMatches[1], "//")))
+								if matches := pattern.FindStringSubmatch(string(b)); len(matches) > 0 {
+									h, err := goheader.ParseHeader(matches[1])
 									if err != nil {
 										return err
 									}
-									for k, v := range h.Map() {
-										outputMap[k] = v
-									}
+									outputFile.Header = h
 								}
-								outputObjects = append(outputObjects, outputMap)
+								outputObjects = append(outputObjects, outputFile.Map())
 							}
 						}
 					}
@@ -161,13 +168,121 @@ func main() {
 		},
 	}
 
-	flags := dumpCommand.Flags()
+	flags := cmd.Flags()
 	flags.StringP("input-dir", "i", "", "The input directory")
 	flags.StringP("input-skip", "s", "", "Skip these directories and files.  A regular expression that is matched against the path.")
 	flags.StringP("input-extension", "e", "", "Filter all files by this extesion")
 	flags.StringP("output-format", "f", "json", "Output format")
 
-	rootCommand.AddCommand(versionCommand, dumpCommand)
+	return cmd
+}
+
+func createFixCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "fix",
+		Short: "fix headers",
+		Long:  "fix headers",
+		RunE: func(cmd *cobra.Command, args []string) error {
+
+			v := viper.New()
+			err := v.BindPFlags(cmd.Flags())
+			if err != nil {
+				return err
+			}
+			v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+			v.AutomaticEnv()
+
+			verbose := v.GetBool("verbose")
+
+			exitCodeOnChanges := v.GetInt("exit-code-on-changes")
+
+			inputDir := v.GetString("input-dir")
+			inputSkip := v.GetString("input-skip")
+			var inputSkipPattern *regexp.Regexp
+			if len(inputSkip) > 0 {
+				p, err := regexp.Compile(inputSkip)
+				if err != nil {
+					return err
+				}
+				inputSkipPattern = p
+			}
+			inputExtension := v.GetString("input-extesion")
+			fixYear := v.GetInt("fix-year")
+
+			changes := 0
+			err = godirwalk.Walk(inputDir, &godirwalk.Options{
+				Callback: func(p string, de *godirwalk.Dirent) error {
+					modeType := de.ModeType()
+					if modeType.IsDir() {
+						if inputSkipPattern != nil && inputSkipPattern.MatchString(p) {
+							return filepath.SkipDir
+						}
+					} else if modeType.IsRegular() {
+						if inputSkipPattern != nil && inputSkipPattern.MatchString(p) {
+							return nil
+						}
+						ext := filepath.Ext(p)
+						if len(ext) > 0 {
+							ext = ext[1:]
+						}
+						if len(inputExtension) == 0 || ext == inputExtension {
+							pattern, ok := patterns[ext]
+							if ok {
+								fileContents, err := ioutil.ReadFile(p) // #nosec
+								if err != nil {
+									return err
+								}
+								before := string(fileContents)
+								if matches := pattern.FindStringSubmatch(before); len(matches) > 0 {
+									after := goheader.FixHeader(matches[1], fixYear) + matches[2]
+									if before != after {
+										changes++
+										err := ioutil.WriteFile(p, []byte(after), modeType)
+										if err != nil {
+											return errors.Wrap(err, fmt.Sprintf("Error updating %q", p))
+										}
+										if verbose {
+											fmt.Println(fmt.Sprintf("Updated %q", p))
+										}
+									}
+								}
+							}
+						}
+					}
+					return nil
+				},
+				ErrorCallback: func(p string, err error) godirwalk.ErrorAction {
+					fmt.Println(errors.Wrap(err, "error walking "+p))
+					return godirwalk.SkipNode
+				},
+			})
+			if err != nil {
+				return err
+			}
+			if exitCodeOnChanges > 0 && changes > 0 {
+				os.Exit(exitCodeOnChanges)
+			}
+			return nil
+		},
+	}
+
+	flags := cmd.Flags()
+	flags.StringP("input-dir", "i", "", "The input directory")
+	flags.StringP("input-skip", "s", "", "Skip these directories and files.  A regular expression that is matched against the path.")
+	flags.StringP("input-extension", "e", "", "Filter all files by this extesion")
+	flags.IntP("fix-year", "y", -1, "The year to use.")
+	flags.Int("exit-code-on-changes", 0, "The exit code to use when changes were made.")
+
+	return cmd
+}
+
+func main() {
+	rootCommand := createRootCommand()
+	rootCommand.AddCommand(
+		createVersionCommand(),
+		createDumpCommand(),
+		createFixCommand(),
+	)
 
 	if err := rootCommand.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, err.Error()+"\n")

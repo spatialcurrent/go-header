@@ -6,23 +6,21 @@
 // =================================================================
 package goheader
 
-type Header struct {
-	Raw       string
-	Contents  string
-	Copyright *Copyright
-	License   string
+type File struct {
+	Path      string
+	Name      string
+	Extension string
+	Header    *Header
 }
 
-func (h Header) Map() map[string]interface{} {
+func (f File) Map() map[string]interface{} {
 	m := map[string]interface{}{
-		"raw":      h.Raw,
-		"contents": h.Contents,
+		"path":      f.Path,
+		"name":      f.Name,
+		"extension": f.Extension,
 	}
-	if h.Copyright != nil {
-		m["copyright"] = h.Copyright.Map()
-	}
-	if len(h.License) > 0 {
-		m["license"] = h.License
+	if f.Header != nil {
+		m["header"] = f.Header.Map()
 	}
 	return m
 }

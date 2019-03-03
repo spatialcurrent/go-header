@@ -2,7 +2,7 @@ version: 2.1
 executors:
   base:
     docker:
-      - image: circleci/golang:1.11
+      - image: circleci/golang:1.12
     working_directory: /go/src/github.com/spatialcurrent/go-header
 jobs:
   pre_deps_golang:
@@ -37,13 +37,8 @@ jobs:
       - restore_cache:
           keys:
             - v1-go-src-{{ .Branch }}-{{ .Revision }}
-      - run:
-          name: Install goheader
-          command: |
-            go get -u github.com/spatialcurrent/go-header/...
-      - run:
-          name: Test
-          command: bash scripts/validate.sh
+      - run: bash scripts/install.sh
+      - run: bash scripts/fix.sh
   build_cli:
     executor: base
     steps:

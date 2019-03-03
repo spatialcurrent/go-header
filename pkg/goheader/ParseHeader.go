@@ -10,15 +10,16 @@ import (
 	"strings"
 )
 
-func ParseHeader(str string) (*Header, error) {
-	text := strings.TrimSpace(str)
-	copyright, err := ParseCopyright(text)
+func ParseHeader(raw string) (*Header, error) {
+	contents := strings.TrimSpace(RemoveEmptyLines(RemoveLinePrefix(raw, "//")))
+	copyright, err := ParseCopyright(contents)
 	if err != nil {
 		return nil, err
 	}
-	license := ParseLicense(text)
+	license := ParseLicense(contents)
 	return &Header{
-		Text:      text,
+		Raw:       raw,
+		Contents:  contents,
 		Copyright: copyright,
 		License:   license,
 	}, nil
