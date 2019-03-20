@@ -159,7 +159,12 @@ func createDumpCommand() *cobra.Command {
 				return err
 			}
 
-			outputString, err := gss.SerializeString(outputObjects, outputFormat, []string{}, gss.NoLimit)
+			outputString, err := gss.SerializeString(&gss.SerializeInput{
+				Object: outputObjects,
+				Format: outputFormat,
+				Header: gss.NoHeader,
+				Limit:  gss.NoLimit,
+			})
 			if err != nil {
 				return err
 			}
